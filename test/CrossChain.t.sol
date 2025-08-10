@@ -43,7 +43,7 @@ contract CrossChain is Test {
     RebaseTokenPool arbSepoliaPool;
 
     Register.NetworkDetails sepoliaNetworkDetails;
-    Register.NetworkDetails arbSepoliaNetwrokDetails;
+    Register.NetworkDetails arbSepoliaNetworkDetails;
 
     function setUp() public {
         // 1. Create forks
@@ -102,7 +102,7 @@ contract CrossChain is Test {
         vm.selectFork(arbSepoliaFork); // Selects the arbSepolia fork as current network
 
         // 5. We have got the network details for the arbSepolia fork
-        arbSepoliaNetwrokDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
+        arbSepoliaNetworkDetails = ccipLocalSimulatorFork.getNetworkDetails(block.chainid);
 
         vm.startPrank(owner);
 
@@ -111,8 +111,8 @@ contract CrossChain is Test {
         arbSepoliaPool = new RebaseTokenPool(
             IERC20(address(arbSepoliaToken)),
             new address[](0),
-            arbSepoliaNetwrokDetails.rmnProxyAddress,
-            arbSepoliaNetwrokDetails.routerAddress
+            arbSepoliaNetworkDetails.rmnProxyAddress,
+            arbSepoliaNetworkDetails.routerAddress
         );
 
         console.log("");
@@ -121,22 +121,22 @@ contract CrossChain is Test {
         console.log("arbSepoliaToken contract address: ", address(arbSepoliaToken));
 
         console.log("ccipLocalSimulatorFork contract address: ", address(ccipLocalSimulatorFork));
-        console.log("arbSepoliaNetwrokDetails.chainSelector: ", arbSepoliaNetwrokDetails.chainSelector);
-        console.log("arbSepoliaNetwrokDetails routerAddress: ", arbSepoliaNetwrokDetails.routerAddress);
+        console.log("arbSepoliaNetworkDetails.chainSelector: ", arbSepoliaNetworkDetails.chainSelector);
+        console.log("arbSepoliaNetworkDetails routerAddress: ", arbSepoliaNetworkDetails.routerAddress);
 
         // 7. Grant Mint and Burn roles to the token and pool
         arbSepoliaToken.grantMintAndBurnRole(address(arbSepoliaPool));
 
         // 8. Register CCIP Admin to be the owner of the token
-        RegistryModuleOwnerCustom(arbSepoliaNetwrokDetails.registryModuleOwnerCustomAddress).registerAdminViaOwner(
+        RegistryModuleOwnerCustom(arbSepoliaNetworkDetails.registryModuleOwnerCustomAddress).registerAdminViaOwner(
             address(arbSepoliaToken)
         );
 
         // 9. Accept Admin role to the token
-        TokenAdminRegistry(arbSepoliaNetwrokDetails.tokenAdminRegistryAddress).acceptAdminRole(address(arbSepoliaToken));
+        TokenAdminRegistry(arbSepoliaNetworkDetails.tokenAdminRegistryAddress).acceptAdminRole(address(arbSepoliaToken));
 
         // 10. Set the pool for the token
-        TokenAdminRegistry(arbSepoliaNetwrokDetails.tokenAdminRegistryAddress).setPool(
+        TokenAdminRegistry(arbSepoliaNetworkDetails.tokenAdminRegistryAddress).setPool(
             address(arbSepoliaToken), address(arbSepoliaPool)
         );
 
@@ -147,7 +147,7 @@ contract CrossChain is Test {
         configureTokenPool(
             sepoliaFork,
             address(sepoliaPool),
-            arbSepoliaNetwrokDetails.chainSelector,
+            arbSepoliaNetworkDetails.chainSelector,
             address(arbSepoliaPool),
             address(arbSepoliaToken)
         );
@@ -298,8 +298,10 @@ contract CrossChain is Test {
         console.log("remoteBalanceBefore of remoteToken before bridge: ", remoteBalanceBefore);
 
         // 14. Switch to the local fork
-        // since we wont to use switchChainAndRouteMessage we need to switch backto the local fork
-        // becausew switchChainAndRouteMessage performs a switch to the remote fork as well
+        // since we use switchChainAndRouteMessage we need to switch back to the local fork
+        // because switchChainAndRouteMessage performs a switch to the remote fork as well
+        // if we dont switch back to the local fork, the message will not be routed to the remote fork
+        // and the test will fail ( probably limmitation of current version of chainlink ccip)
         vm.selectFork(localFork);
 
         // 15. Switch to the remote fork and route the message
@@ -340,7 +342,7 @@ contract CrossChain is Test {
             sepoliaFork, // local fork
             arbSepoliaFork, // remote fork
             sepoliaNetworkDetails, // local network details (sepolia)
-            arbSepoliaNetwrokDetails, // remote network details (arbSepolia)
+            arbSepoliaNetworkDetails, // remote network details (arbSepolia)
             sepoliaToken, // local token (sepolia)
             arbSepoliaToken // remote token (arbSepolia)
         );
