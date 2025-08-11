@@ -1,0 +1,7 @@
+{
+    "editor.formatOnSave": true,
+    "editor.minimap.maxColumn": 1000,
+    "html.format.wrapLineLength": 0,
+    "solidity.formatter": "forge",
+    "editor.wordWrapColumn": 80
+}

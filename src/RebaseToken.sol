@@ -149,11 +149,7 @@ contract RebaseToken is ERC20, Ownable, AccessControl {
      * @param _user The user to calculate the interest accumulated for.
      * @return linearInterest The interest that has been accumulated since the last update.
      */
-    function _calculateUserAccumulatedInterestSinceLastUpdate(address _user)
-        internal
-        view
-        returns (uint256 linearInterest)
-    {
+    function _calculateUserAccumulatedInterestSinceLastUpdate(address _user) internal view returns (uint256 linearInterest) {
         // we need to calculate the interest that has been accumulated since the last update
         // this is going to be linear growth with time
         // 1. calculate the time since the last update

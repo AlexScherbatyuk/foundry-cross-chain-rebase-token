@@ -11,4 +11,10 @@ remappings = [
     ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
-via_ir = true
+# via_ir = true
+
+[fmt]
+# Maximum line length before wrapping
+line_length = 150
+# Whether to format on save
+format_on_save = true
