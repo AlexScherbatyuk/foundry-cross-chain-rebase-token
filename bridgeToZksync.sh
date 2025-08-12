@@ -44,11 +44,11 @@ cast send ${ZKSYNC_TOKEN_ADMIN_REGISTRY} "acceptAdminRole(address)" ${ZKSYNC_REB
 cast send ${ZKSYNC_TOKEN_ADMIN_REGISTRY} "setPool(address,address)" ${ZKSYNC_REBASE_TOKEN_ADDRESS} ${ZKSYNC_POOL_ADDRESS} --rpc-url ${ZKSYNC_SEPOLIA_RPC_URL} --account devKey
 echo "CCIP roles and permissions set"
 
-# 2. On Sepolia!
-
+# 1. On Sepolia!
 echo "Running the script to deploy the contracts on Sepolia..."
 output=$(forge script ./script/Deployer.s.sol:TokenAndPoolDeployer --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast)
-echo "Contracts deployed and permission set on Sepolia"
+echo "Contracts deployed on Sepolia"
+echo "Running the script to set the permissions on Sepolia..."
 
 # Extract the addresses from the output
 SEPOLIA_REBASE_TOKEN_ADDRESS=$(echo "$output" | grep 'token: contract RebaseToken' | awk '{print $4}')
@@ -56,6 +56,15 @@ SEPOLIA_POOL_ADDRESS=$(echo "$output" | grep 'pool: contract RebaseTokenPool' | 
 
 echo "Sepolia rebase token address: $SEPOLIA_REBASE_TOKEN_ADDRESS"
 echo "Sepolia pool address: $SEPOLIA_POOL_ADDRESS"
+
+output=$(forge script ./script/Deployer.s.sol:SetPermissions --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "grantRole(address,address)" ${SEPOLIA_REBASE_TOKEN_ADDRESS} ${SEPOLIA_POOL_ADDRESS})
+echo "Contracts permission set on Sepolia"
+
+output=$(forge script ./script/Deployer.s.sol:SetPermissions --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "setAdmin(address,address)" ${SEPOLIA_REBASE_TOKEN_ADDRESS} ${SEPOLIA_POOL_ADDRESS})
+echo "Contracts admin set on Sepolia"
+echo "Deployment output length: ${#output}"
+echo "Deployment output: $output"
+
 
 # Deploy the vault 
 echo "Deploying the vault on Sepolia..."
@@ -73,7 +82,7 @@ echo "Configuring the pool on Sepolia..."
 #         bool inboundRateLimiterIsEnabled, false 
 #         uint128 inboundRateLimiterCapacity, 0 
 #         uint128 inboundRateLimiterRate 0 
-forge script ./script/ConfigurePool.s.sol:ConfigurePoolScript --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "run(address,uint64,address,address,bool,uint128,uint128,bool,uint128,uint128)" ${SEPOLIA_POOL_ADDRESS} ${ZKSYNC_SEPOLIA_CHAIN_SELECTOR} ${ZKSYNC_POOL_ADDRESS} ${ZKSYNC_REBASE_TOKEN_ADDRESS} false 0 0 false 0 0
+forge script ./script/ConfigurePool.s.sol:ConfigurePool --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "run(address,uint64,address,address,bool,uint128,uint128,bool,uint128,uint128)" ${SEPOLIA_POOL_ADDRESS} ${ZKSYNC_SEPOLIA_CHAIN_SELECTOR} ${ZKSYNC_POOL_ADDRESS} ${ZKSYNC_REBASE_TOKEN_ADDRESS} false 0 0 false 0 0
 
 # Deposit funds to the vault
 echo "Depositing funds to the vault on Sepolia..."
@@ -83,13 +92,26 @@ cast send ${VAULT_ADDRESS} --value ${AMOUNT} --rpc-url ${SEPOLIA_RPC_URL} --acco
 
 # Configure the pool on ZKsync
 echo "Configuring the pool on ZKsync..."
-cast send ${ZKSYNC_POOL_ADDRESS}  --rpc-url ${ZKSYNC_SEPOLIA_RPC_URL} --account devKey "applyChainUpdates(uint64[],(uint64,bytes[],bytes,(bool,uint128,uint128),(bool,uint128,uint128))[])" "[${SEPOLIA_CHAIN_SELECTOR}]" "[(${SEPOLIA_CHAIN_SELECTOR},[$(cast abi-encode "f(address)" ${SEPOLIA_POOL_ADDRESS})],$(cast abi-encode "f(address)" ${SEPOLIA_REBASE_TOKEN_ADDRESS}),(false,0,0),(false,0,0))]"
+
+#   struct ChainUpdate {
+#     uint64 remoteChainSelector; // ──╮ Remote chain selector
+#     bool allowed; // ────────────────╯ Whether the chain should be enabled
+#     bytes remotePoolAddress; //        Address of the remote pool, ABI encoded in the case of a remote EVM chain.
+#     bytes remoteTokenAddress; //       Address of the remote token, ABI encoded in the case of a remote EVM chain.
+#     RateLimiter.Config outboundRateLimiterConfig; // Outbound rate limited config, meaning the rate limits for all of the onRamps for the given chain
+#     RateLimiter.Config inboundRateLimiterConfig; // Inbound rate limited config, meaning the rate limits for all of the offRamps for the given chain
+#   }
+
+#cast send ${ZKSYNC_POOL_ADDRESS}  --rpc-url ${ZKSYNC_SEPOLIA_RPC_URL} --account devKey "applyChainUpdates(uint64[],(uint64,bytes[],bytes,(bool,uint128,uint128),(bool,uint128,uint128))[])" "[${SEPOLIA_CHAIN_SELECTOR}]" "[(${SEPOLIA_CHAIN_SELECTOR},[$(cast abi-encode "f(address)" ${SEPOLIA_POOL_ADDRESS})],$(cast abi-encode "f(address)" ${SEPOLIA_REBASE_TOKEN_ADDRESS}),(false,0,0),(false,0,0))]"
+
+cast send ${ZKSYNC_POOL_ADDRESS} --rpc-url ${ZKSYNC_SEPOLIA_RPC_URL} --account devKey "applyChainUpdates((uint64,bool,bytes,bytes,(bool,uint128,uint128),(bool,uint128,uint128))[])" "[(${SEPOLIA_CHAIN_SELECTOR},true,$(cast abi-encode "f(address)" ${SEPOLIA_POOL_ADDRESS}),$(cast abi-encode "f(address)" ${SEPOLIA_REBASE_TOKEN_ADDRESS}),(false,0,0),(false,0,0))]"
 
 # Bridge the funds using the script to zksync 
 echo "Bridging the funds using the script to ZKsync..."
 SEPOLIA_BALANCE_BEFORE=$(cast balance $(cast wallet address --account devKey) --erc20 ${SEPOLIA_REBASE_TOKEN_ADDRESS} --rpc-url ${SEPOLIA_RPC_URL})
 echo "Sepolia balance before bridging: $SEPOLIA_BALANCE_BEFORE"
-forge script ./script/BridgeTokens.s.sol:BridgeTokensScript --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "sendMessage(address,uint64,address,uint256,address,address)" $(cast wallet address --account devKey) ${ZKSYNC_SEPOLIA_CHAIN_SELECTOR} ${SEPOLIA_REBASE_TOKEN_ADDRESS} ${AMOUNT} ${SEPOLIA_LINK_ADDRESS} ${SEPOLIA_ROUTER}
+#forge script ./script/BridgeTokens.s.sol:BridgeTokensScript --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "sendMessage(address,uint64,address,uint256,address,address)" $(cast wallet address --account devKey) ${ZKSYNC_SEPOLIA_CHAIN_SELECTOR} ${SEPOLIA_REBASE_TOKEN_ADDRESS} ${AMOUNT} ${SEPOLIA_LINK_ADDRESS} ${SEPOLIA_ROUTER}
+forge script ./script/BridgeTokens.s.sol:BridgeTokens --rpc-url ${SEPOLIA_RPC_URL} --account devKey --broadcast --sig "run(address,address,uint64,uint256,address,address)" $(cast wallet address --account devKey) ${SEPOLIA_ROUTER} ${ZKSYNC_SEPOLIA_CHAIN_SELECTOR} ${AMOUNT} ${SEPOLIA_LINK_ADDRESS} ${SEPOLIA_REBASE_TOKEN_ADDRESS}
 echo "Funds bridged to ZKsync"
 SEPOLIA_BALANCE_AFTER=$(cast balance $(cast wallet address --account devKey) --erc20 ${SEPOLIA_REBASE_TOKEN_ADDRESS} --rpc-url ${SEPOLIA_RPC_URL})
 echo "Sepolia balance after bridging: $SEPOLIA_BALANCE_AFTER"

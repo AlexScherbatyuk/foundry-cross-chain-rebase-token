@@ -36,7 +36,7 @@ contract ConfigurePool is Script {
                 rate: inboundRateLimitRate
             })
         });
-        vm.stopBroadcast();
         TokenPool(localPool).applyChainUpdates(chainsToAdd);
+        vm.stopBroadcast();
     }
 }

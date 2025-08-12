@@ -7,6 +7,13 @@ import {Pool} from "@chainlink-ccip/contracts/src/v0.8/ccip/libraries/Pool.sol";
 import {IERC20} from "@chainlink-ccip/contracts/src/v0.8/vendor/openzeppelin-solidity/v4.8.3/contracts/token/ERC20/IERC20.sol";
 import {IRebaseToken} from "./interfaces/IRebaseToken.sol";
 
+/**
+ * @title RebaseTokenPool
+ * @author Alexander Scherbatyuk
+ * @notice This is a cross-chain rebase token pool that allows users to lock and burn their tokens to earn interest.
+ * @notice The interest rate in the smart contract can only decrease.
+ * @notice Each user will have their own interest rate that is global interest rate at the time of depositing.
+ */
 contract RebaseTokenPool is TokenPool {
     constructor(IERC20 _token, address[] memory _allowList, address _rmnProxy, address _router) TokenPool(_token, _allowList, _rmnProxy, _router) {}
 

@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity ^0.8.24;
 
 import {IRebaseToken} from "./interfaces/IRebaseToken.sol";
 
+/**
+ * @title Vault
+ * @author Alexander Scherbatyuk
+ * @notice This is a vault that allows users to deposit ETH and mint rebase tokens in return.
+ * @notice The vault is used to store the ETH and mint rebase tokens to the users.
+ * @notice The vault is used to store the rebase tokens and send them to the users.
+ * @notice The vault is used to store the rewards and send them to the users.
+ */
 contract Vault {
     // we need to pass token address to the constructor
     // create deposit function that means tokens to the user equal to amount of ETH the user sent
